@@ -1,0 +1,57 @@
+body{
+
+    font-family:Arial;
+    background:#f4f4f4;
+
+}
+
+.container{
+
+    width:80%;
+    margin:auto;
+
+}
+
+.compare-box{
+
+    display:flex;
+    gap:40px;
+    margin-bottom:20px;
+
+}
+
+select{
+
+    width:220px;
+    padding:10px;
+
+}
+
+button{
+
+    padding:10px 30px;
+    cursor:pointer;
+
+}
+
+table{
+
+    width:100%;
+    border-collapse:collapse;
+    margin-top:30px;
+
+}
+
+th{
+
+    background:#0d6efd;
+    color:white;
+
+}
+
+th,td{
+
+    padding:12px;
+    text-align:center;
+
+}

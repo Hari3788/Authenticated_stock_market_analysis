@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compare Stocks</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        body{
+            font-family:Arial,Helvetica,sans-serif;
+            background:#f4f4f4;
+        }
+
+        .container{
+            width:90%;
+            max-width:1000px;
+            margin:40px auto;
+        }
+
+        h1{
+            text-align:center;
+            margin-bottom:30px;
+        }
+
+        .compare-box{
+            display:flex;
+            gap:20px;
+            justify-content:center;
+            margin-bottom:20px;
+        }
+
+        .stock-select{
+            flex:1;
+        }
+
+        select{
+            width:100%;
+            padding:10px;
+            border-radius:5px;
+        }
+
+        button{
+            display:block;
+            margin:20px auto;
+            padding:10px 25px;
+            background:#667eea;
+            color:white;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#4c63d2;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+            margin-top:30px;
+            background:white;
+        }
+
+        table th,
+        table td{
+            border:1px solid #ddd;
+            padding:12px;
+            text-align:center;
+        }
+
+        table th{
+            background:#667eea;
+            color:white;
+        }
+
+        .positive{
+            color:green;
+            font-weight:bold;
+        }
+
+        .negative{
+            color:red;
+            font-weight:bold;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div style="margin-bottom:20px;">
+    <a href="/" style="
+        text-decoration:none;
+        color:white;
+        background:#667eea;
+        padding:10px 20px;
+        border-radius:5px;">
+        ← Back to Dashboard
+    </a>
+    </div>
+
+<div class="container">
+
+<h1>📈 Compare Stocks</h1>
+
+<div class="compare-box">
+
+<div class="stock-select">
+
+<label>First Stock</label>
+
+<select id="stock1">
+
+{% for stock in popular_stocks %}
+
+<option value="{{stock.symbol}}">
+
+{{stock.symbol}}
+
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+<div class="stock-select">
+
+<label>Second Stock</label>
+
+<select id="stock2">
+
+{% for stock in popular_stocks %}
+
+<option value="{{stock.symbol}}">
+
+{{stock.symbol}}
+
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+</div>
+
+<button onclick="compareStocks()">
+
+Compare
+
+</button>
+
+<div id="result"></div>
+
+</div>
+
+<script>
+
+async function compareStocks(){
+
+const token=localStorage.getItem("token");
+
+const stock1=document.getElementById("stock1").value;
+
+const stock2=document.getElementById("stock2").value;
+
+if(stock1===stock2){
+
+alert("Please select two different stocks.");
+
+return;
+
+}
+
+try{
+
+const res1=await fetch(`/api/quote/${stock1}`,{
+
+headers:{
+Authorization:`Bearer ${token}`
+}
+
+});
+
+const res2=await fetch(`/api/quote/${stock2}`,{
+
+headers:{
+Authorization:`Bearer ${token}`
+}
+
+});
+
+const data1=await res1.json();
+
+const data2=await res2.json();
+
+document.getElementById("result").innerHTML=`
+
+<table>
+
+<tr>
+
+<th>Metric</th>
+
+<th>${data1.symbol}</th>
+
+<th>${data2.symbol}</th>
+
+</tr>
+
+<tr>
+
+<td>Current Price</td>
+
+<td>$${data1.price}</td>
+
+<td>$${data2.price}</td>
+
+</tr>
+
+<tr>
+
+<td>High</td>
+
+<td>$${data1.high}</td>
+
+<td>$${data2.high}</td>
+
+</tr>
+
+<tr>
+
+<td>Low</td>
+
+<td>$${data1.low}</td>
+
+<td>$${data2.low}</td>
+
+</tr>
+
+<tr>
+
+<td>Volume</td>
+
+<td>${Number(data1.volume).toLocaleString()}</td>
+
+<td>${Number(data2.volume).toLocaleString()}</td>
+
+</tr>
+
+<tr>
+
+<td>Daily Change</td>
+
+<td class="${data1.change>=0?'positive':'negative'}">
+
+${data1.change_percent}
+
+</td>
+
+<td class="${data2.change>=0?'positive':'negative'}">
+
+${data2.change_percent}
+
+</td>
+
+</tr>
+
+</table>
+
+`;
+
+}
+
+catch(error){
+
+alert("Unable to compare stocks.");
+
+console.log(error);
+
+}
+
+}
+
+</script>
+<footer style="text-align:center;margin-top:40px;color:gray;">
+Developed by Hari Saurabh
+</footer>
+
+</body>
+
+</html>

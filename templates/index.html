@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Analysis Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Existing Styles from your snippet */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .auth-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center; }
+        .auth-modal.active { display: flex; }
+        .auth-box { background: white; padding: 40px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); width: 400px; max-width: 90%; }
+        .auth-box h2 { margin-bottom: 30px; color: #333; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #555; font-weight: 600; }
+        .form-group input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; }
+        .btn-auth, .btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; }
+        .auth-switch { text-align: center; margin-top: 20px; color: #666; }
+        .error-message { background: #fee; color: #c33; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: none; }
+        
+        header { background: white; padding: 20px 30px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .user-info { display: none; align-items: center; gap: 15px; }
+        .user-info.active { display: flex; }
+        .btn-logout { padding: 8px 20px; background: #ff4757; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        
+        .search-section, .stock-data { background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; display: block; }
+        .stock-data { display: none; }
+        .stock-data.active { display: block; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }
+        .metric-card { background: #f8f9fa; padding: 20px; border-radius: 10px; }
+        .chart-container { height: 400px; margin-top: 20px; }
+        .positive { color: #2ecc71; }
+        .negative { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+
+            <div>
+                <h2>📈 Stock Market Analysis</h2>
+                <p style="color:gray;font-size:14px;">
+                Analyze real-time stock prices using Alpha Vantage API
+                </p>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+
+
+                <a href="/" class="btn">Dashboard</a>
+
+                <a href="/compare" class="btn">Compare</a>
+
+                <a href="/portfolio" class="btn">Portfolio</a>
+
+            </div>
+
+            <div class="user-info" id="userInfo">
+                Welcome,
+                <strong id="displayUsername"></strong>
+
+                <button class="btn-logout" onclick="logout()">
+                    Logout
+                </button>
+
+            </div>
+
+        </header>
+
+        <section class="search-section">
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="stockInput" placeholder="Enter Symbol (e.g. AAPL)" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd;">
+                <button class="btn" onclick="fetchStockData()" style="width: auto;">Analyze</button>
+            </div>
+            <h3 style="margin-bottom:10px;">
+            Popular Stocks
+            </h3>
+            <div class="popular-stocks">
+                {% for stock in popular_stocks %}
+                <button onclick="quickSearch('{{stock.symbol}}')" style="padding:5px 15px; border-radius:20px; border:1px solid #667eea; background:none; cursor:pointer;">{{stock.symbol}}</button>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="stock-data" id="stockDashboard">
+            <div class="stock-header">
+                <h2 id="resSymbol">
+                    Apple Inc.
+                </h2>
+
+                <p style="color:gray">
+                    Current Market Price
+                </p>
+                <div class="stock-price" id="resPrice">$0.00</div>
+                <div id="resChange" class="price-change">0.00%</div>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-card"><div class="metric-label">Open</div><div class="metric-value" id="resOpen">-</div></div>
+                <div class="metric-card"><div class="metric-label">Previous Close</div><div class="metric-value" id="resPrevClose">-</div></div>
+                <div class="metric-card"><div class="metric-label">High</div><div class="metric-value" id="resHigh">-</div></div>
+                <div class="metric-card"><div class="metric-label">Low</div><div class="metric-value" id="resLow">-</div></div>
+                <div class="metric-card"><div class="metric-label">Volume</div><div class="metric-value" id="resVol">-</div></div>
+            </div>
+            <div class="chart-container">
+                <canvas id="stockChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <div class="auth-modal active" id="authModal">
+        <div class="auth-box">
+            <h2 id="authTitle">Login</h2>
+            <div class="error-message" id="authError"></div>
+            <form id="authForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group" id="emailGroup" style="display: none;">
+                    <label>Email</label>
+                    <input type="email" id="email">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn-auth" id="authBtn">Login</button>
+            </form>
+            <div class="auth-switch">
+                <a href="#" id="toggleAuth">Don't have an account? Register</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isLogin = true;
+        let chart = null;
+
+        // Toggle Login/Register
+        document.getElementById('toggleAuth').addEventListener('click', (e) => {
+            e.preventDefault();
+            isLogin = !isLogin;
+            document.getElementById('authTitle').innerText = isLogin ? 'Login' : 'Register';
+            document.getElementById('authBtn').innerText = isLogin ? 'Login' : 'Register';
+            document.getElementById('emailGroup').style.display = isLogin ? 'none' : 'block';
+            document.getElementById('toggleAuth').innerText = isLogin ? "Don't have an account? Register" : "Already have an account? Login";
+        });
+
+        // Handle Auth
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+            const payload = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                ...(isLogin ? {} : { email: document.getElementById('email').value })
+            };
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', data.user.username);
+                    checkAuth();
+                } else {
+                    showError(data.error);
+                }
+            } catch (err) { showError("Server connection failed"); }
+        });
+
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                document.getElementById('authModal').classList.remove('active');
+                document.getElementById('userInfo').classList.add('active');
+                document.getElementById('displayUsername').innerText = localStorage.getItem('user');
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        function showError(msg) {
+            const errDiv = document.getElementById('authError');
+            errDiv.innerText = msg;
+            errDiv.style.display = 'block';
+        }
+
+        async function fetchStockData() {
+            const symbol = document.getElementById('stockInput').value.toUpperCase();
+            if (!symbol) return;
+            const token = localStorage.getItem('token');
+
+            try {
+                // Fetch Quote
+                const quoteRes = await fetch(`/api/quote/${symbol}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const quote = await quoteRes.json();
+
+                if (quote.error) return alert(quote.error);
+
+                document.getElementById('stockDashboard').classList.add('active');
+                document.getElementById('resSymbol').innerText = quote.symbol;
+                document.getElementById('resPrice').innerText = `$${quote.price}`;
+                document.getElementById('resHigh').innerText = `$${quote.high}`;
+                document.getElementById('resLow').innerText = `$${quote.low}`;
+                document.getElementById('resVol').innerText = quote.volume.toLocaleString();
+                document.getElementById('resOpen').innerText = `$${quote.open}`;
+                document.getElementById('resPrevClose').innerText = `$${quote.previous_close}`;
+                const changeEl = document.getElementById('resChange');
+                changeEl.innerText = quote.change_percent;
+                changeEl.className = `price-change ${quote.change >= 0 ? 'positive' : 'negative'}`;
+
+                // Fetch History for Chart
+                const histRes = await fetch(`/api/history/${symbol}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const hist = await histRes.json();
+                updateChart(hist.dates, hist.prices);
+
+            } catch (err) { console.error(err); }
+        }
+
+        function updateChart(labels, data) {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: ' Stock Price (USD)',
+                        data,
+                        backgroundColor: 'rgba(102,126,234,0.2)',
+                        borderColor: '#667eea',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options:{
+
+                    responsive:true,
+
+                    plugins:{
+
+                        legend:{
+
+                            display:false
+
+                        }
+
+                    }
+
+                }
+
+            });
+        }
+
+        function quickSearch(s) {
+            document.getElementById('stockInput').value = s;
+            fetchStockData();
+        }
+
+        window.onload = checkAuth;
+    </script>
+    <footer style="margin-top:40px;
+    text-align:center;
+    color:white;
+    padding:20px;">
+    Stock Market Analysis Project
+    <br>
+
+    Built using Flask • SQLite • JWT • Alpha Vantage API
+    </footer>
+    <footer style="text-align:center;margin-top:40px;color:gray;">
+    Developed by Hari Saurabh
+    </footer>
+</body>
+</html>

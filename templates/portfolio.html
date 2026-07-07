@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div style="margin-bottom:20px;">
+    <a href="/" class="btn btn-secondary">
+        ← Back to Dashboard
+    </a>
+</div>
+
+<div class="container mt-4">
+
+    <div class="row">
+
+        <div class="col-lg-4">
+
+            <div class="card shadow-lg border-0">
+
+                <div class="card-header bg-primary text-white">
+                    <h4>Add Stock</h4>
+                </div>
+
+                <div class="card-body">
+
+                    <form id="portfolioForm">
+
+                        <div class="mb-3">
+                            <label class="form-label">Stock Symbol</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="symbol"
+                                placeholder="AAPL"
+                                required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Quantity</label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="quantity"
+                                min="1"
+                                required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Purchase Price ($)</label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="purchasePrice"
+                                step="0.01"
+                                required>
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn btn-success w-100">
+
+                            Add to Portfolio
+
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="col-lg-8">
+
+            <div class="row mb-4">
+
+                <div class="col-md-4">
+
+                    <div class="card bg-success text-white shadow">
+
+                        <div class="card-body">
+
+                            <h6>Total Investment</h6>
+
+                            <h3 id="investment">$0</h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card bg-info text-white shadow">
+
+                        <div class="card-body">
+
+                            <h6>Current Value</h6>
+
+                            <h3 id="currentValue">$0</h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="col-md-4">
+
+                    <div class="card bg-warning shadow">
+
+                        <div class="card-body">
+
+                            <h6>Profit / Loss</h6>
+
+                            <h3 id="profitLoss">$0</h3>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div class="card shadow-lg">
+
+                <div class="card-header bg-dark text-white">
+
+                    <h4>My Portfolio</h4>
+
+                </div>
+
+                <div class="card-body">
+
+                    <table class="table table-striped table-hover">
+
+                        <thead class="table-dark">
+
+                            <tr>
+
+                                <th>Stock</th>
+
+                                <th>Quantity</th>
+
+                                <th>Purchase Price</th>
+
+                                <th>Current Price</th>
+
+                                <th>Total Value</th>
+
+                                <th>P/L</th>
+
+                                <th>Action</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody id="portfolioTable">
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+let portfolio=[];
+
+document.getElementById("portfolioForm").addEventListener("submit",function(e){
+
+e.preventDefault();
+
+const symbol=document.getElementById("symbol").value.toUpperCase();
+
+const quantity=parseInt(document.getElementById("quantity").value);
+
+const purchasePrice=parseFloat(document.getElementById("purchasePrice").value);
+if(quantity <= 0 || purchasePrice <= 0){
+    alert("Please enter valid values.");
+    return;
+}
+
+portfolio.push({
+
+symbol,
+
+quantity,
+
+purchasePrice
+
+});
+
+document.getElementById("portfolioForm").reset();
+
+renderPortfolio();
+
+});
+
+async function renderPortfolio(){
+
+const token=localStorage.getItem("token");
+
+const tbody=document.getElementById("portfolioTable");
+
+tbody.innerHTML="";
+
+let investment=0;
+
+let current=0;
+
+for(let i = 0; i < portfolio.length; i++){
+
+const stock = portfolio[i];
+
+const response=await fetch(`/api/quote/${stock.symbol}`,{
+
+headers:{
+
+Authorization:`Bearer ${token}`
+
+}
+
+});
+
+const data=await response.json();
+
+const currentPrice = parseFloat(data.price);
+
+const totalInvestment=stock.quantity*stock.purchasePrice;
+
+const totalCurrent=stock.quantity*currentPrice;
+
+const profit=totalCurrent-totalInvestment;
+
+investment+=totalInvestment;
+
+current+=totalCurrent;
+
+tbody.innerHTML+=`
+
+<tr>
+
+<td>${stock.symbol}</td>
+
+<td>${stock.quantity}</td>
+
+<td>$${stock.purchasePrice.toFixed(2)}</td>
+
+<td>$${currentPrice.toFixed(2)}</td>
+
+<td>$${totalCurrent.toFixed(2)}</td>
+
+<td class="${profit>=0?'text-success':'text-danger'}">
+
+$${profit.toFixed(2)}
+
+</td>
+
+<td>
+
+<button
+
+class="btn btn-danger btn-sm"
+
+onclick="removeStock(${i})"
+
+Delete
+
+</button>
+
+</td>
+
+</tr>
+
+`;
+
+}
+
+document.getElementById("investment").innerHTML="$"+investment.toFixed(2);
+
+document.getElementById("currentValue").innerHTML="$"+current.toFixed(2);
+
+document.getElementById("profitLoss").innerHTML="$"+(current-investment).toFixed(2);
+
+}
+
+function removeStock(index){
+
+portfolio.splice(index,1);
+
+renderPortfolio();
+
+}
+
+</script>
+<footer style="text-align:center;margin-top:40px;color:gray;">
+Developed by Hari Saurabh
+</footer>
+
+</body>
+</html>
