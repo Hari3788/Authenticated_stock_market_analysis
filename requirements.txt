@@ -1,0 +1,6 @@
+Flask
+Flask-JWT-Extended
+requests
+PyJWT
+Werkzeug
+gunicorn
